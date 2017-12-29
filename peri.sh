@@ -3,6 +3,8 @@
 #TODO: Prevent a device from connecting to networks (aka make the user believe the device is problematic)
 #sudo aireplay-ng -0 $n -a $your_AP -c $mac $mon_mode --ignore-negative-one
 
+#TODO: Add a feature to target the closest WiFi in range. We'll play with PWR values in the scan file.
+
 main()
 {
 	su_req
@@ -46,6 +48,18 @@ requirements()
 		printf "[OK] iwconfig" #debug info
 	fi
 
+	#killall
+	killall=$(apt list --installed psmisc 2>&1 | grep -m 1 -o "psmisc")
+
+	if [ "$killall" != "psmisc" ];
+	then
+		sudo apt-get install psmisc
+		clear
+		main #restart script after installation until user finally installs it
+	else
+		printf "[OK] killall" #debug info
+	fi
+
 	#set a trap for the end, so we restore network manager and clean up any leftovers
 	trap clean_up EXIT
 }
@@ -79,6 +93,7 @@ check_status()
 {
 	if [ $status -eq 0 ];
 	then
+		echo
 		echo "		[!] Enable monitor mode first"
 		sleep 2
 		menu
@@ -139,7 +154,7 @@ menu()
 
 		* )
 			echo
-			echo "		Invalid option, try again"
+			echo "		[!] Invalid option, try again"
 			sleep 1
 			menu
 			;;
@@ -184,7 +199,7 @@ haki()
 {
 	check_status
 
-	scan 10
+	scan 15
 
 	get_mon_mode
 
@@ -267,7 +282,7 @@ attack_network()
 	check_status
 
 	#this creates the list of APs
-	scan 10
+	scan 15
 	#this selects the target network (your_AP) and gets the number of attacks (n)
 	select_target_network
 	#this sets your_AP
@@ -280,15 +295,11 @@ attack_network()
 	
 	echo
 	if [[ "$num_of_mon_modes" -lt 1 ]]; then
-
+		echo
 		echo "		[!] Enable monitor mode first!"
 		sleep 2
 		menu
 	else
-		echo "		[i] Press Ctrl + C to stop the attack anytime."
-		echo
-		sleep 3
-
 		#synchronise the card with the target's channel
 		iwconfig $mon_mode channel $target_channel
 
@@ -407,7 +418,7 @@ print_status()
 		status=0
 		
 		if [[ "$your_AP" == "Not-Associated" ]]; then
-			echo " You are not connected to a WiFi network!"
+			echo " You are not connected to a WiFi network."
 		else
 			echo " Connected to $your_AP_name ($your_AP) with $your_CARD"
 			#echo " Connected to DemoAP (01:23:45:AB:CD:EF) with wlo1"
